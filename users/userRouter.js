@@ -1,101 +1,90 @@
+// Imports
 const express = require('express');
-const User = require('./userDb.js')
+const UsersDB = require('./userDb.js');
+const PostsDB = require('../posts/postDb.js');
+// Ensure our router is using Express
 const router = express.Router();
-
-
-
-
-
-
-router.post('/', (req, res) => {
-     const body = req.body
-     console.log("this is my body")
-    User.insert(body)
-    
-    .then(users =>{
-        res.status(201).json({newUser: users})
+router.post('/', validateUser, (req, res) => {
+    const body = req.body;
+    console.log('This is the body', body)
+    UsersDB.insert(body)
+    .then(user => {
+        res.status(201).json({ newUser: user })
     })
-    
-    .catch(error =>{
-        console.log(error)
-    res.status(500).json({message:"Error Adding User"})
+    .catch(err => {
+        res.status(500).json({ message: 'Could not add user' })
     })
-})
-
-
+});
+/*
+validateUserId validates the user id on every request that expects a user id parameter
+if the id parameter is valid, store that user object as req.user
+if the id parameter does not match any user id in the database, cancel the request and respond with status 400 and { message: "invalid user id" }
+getById(): takes an id as the argument and returns a promise that resolves to the resource with that id if found.
+insert(): calling insert passing it a resource object will add it to the database and return the new resource.
+ */
 router.post('/:id/posts', validateUserId, validatePost, (req, res) => {
-    //  const userId = req.params.id;
+    // const userId = req.params.id;
     const body = req.body;
     body.user_id = req.params.id;
-    // console.log(body)
-    User.insert(body)
+    
+    PostsDB.insert(body)
     .then(user => {
-        res.status(201).json(user)    
+        res.status(201).json({ newUser: user })    
     })
     .catch(err => {
         res.status(500).json({ message: 'Error adding the user' })
     })
 });
 router.get('/', (req, res) => {
-     User.get(req.query)
-     .then(user =>{
-         res.status(200).json(user)
-     })
+    UsersDB.get()
+    .then(user => {
+        res.status(200).json({ users: user })
+    })
+    .catch(err => {
+        res.status(500).json({ errorMessage: 'Error retrieving users from the DB' })
+    })
 });
-
-router.get('/:id', (req, res,next) => {
-     User.getById(req.params.id)
-     .then(user =>{
-         if(user){
-             res.status(200).json(user)
-         }else{
-             res.status(404).json({message:'User not found'})
-         }
-     })
-     .catch(error =>{
-         console.log(error)
-     })
+router.get('/:id', validateUserId, (req, res) => {
+    res.status(201).json({ user: req.user })
 });
-
-router.get('/:id/posts', (req, res) => {
-      User.getUserPosts(req.params.id)
-      .then(posts =>{
-          res.status(200).json(posts)
-      })
-      .catch(error =>{console.log(error)})
+// Need validateUserID
+router.get('/:id/posts', validateUserId, (req, res) => {
+    UsersDB.getUserPosts(req.params.id)
+    .then(post => {
+        res.status(200).json({ allPosts: post })
+    })
+    .catch(err => {
+        res.status(500).json({ errorMessage: "There was an error retrieving the list of users. "})
+    })
 });
-
-router.delete('/:id', (req, res) => {
-           User.remove(req.params.id)
-           .then(count =>{
-               if(count > 0){
-                   res.status(200).json({message:'The User Has Been Deleted'})
-               }else{
-                   res.status(404).json({message:'The User Could Not Be Found'})
-               }
-           })
-           .catch(error =>{
-               console.log(error);
-               res.status(500).json({
-                   message: 'Error Removing The User'
-               })
-           })
+// Need validateUserID
+router.delete('/:id', validateUserId, (req, res) => {
+    UsersDB.remove(req.params.id)
+    .then(() => {
+        res.status(200).json({ deleteduser: req.user})
+    })
+    .catch(err => {
+        res.status(500).json({ errorMessage: "An error occured while trying to delete the user." })
+    })
 });
-
-router.put('/:id', (req, res) => {
-    
+// Need validateUserID & validateUser
+router.put('/:id', validateUser, validateUserId, (req, res) => {
+    UsersDB.update(req.params.id, req.body)
+    .then(() => {
+        UsersDB.getById(req.params.id)
+        .then(user => {
+            res.status(200).json(user)
+        })
+    })
+    .catch(err => {
+        res.status(500).json({ errorMessage: "An Error occured while updating the username OR that name is already taken, please try another name." })
+    })
 });
-
-
-
-
-// custom middleware
-
+//custom middleware
 function validateUserId(req, res, next) {
     // store req.params.id
     const id = req.params.id;
-
-    User.getById(id)
+    UsersDB.getById(id)
     .then(user => {
         if(!user) {
             res.status(404).json({ errorMessage: "That is not a valid id/user" })
@@ -109,23 +98,23 @@ function validateUserId(req, res, next) {
         res.status(400).json({ errorMessage: 'invalid user id'})
     })
 };
-
 function validateUser(req, res, next) {
-    const body = req.body
-    if (!body){
-        res.status(400).json({message: 'Missing user data'})
-    }else if (!body.name){
-        res.status(400).json({message:'User name required'})
-    }else{
-        next()
+    const body = req.body;
+    const bodyName = req.body.name;
+    
+    if(!body) {
+        res.status(400).json({ errorMessage: "missing user data" })
+    } else if(!bodyName) {
+        res.status(400).json({ errorMessage: "Please add a name." })
+    } else {
+        // move to the next MW function
+        next();
     }
 };
-
 function validatePost(req, res, next) {
     // Need - req.body & body.text
     const body = req.body;
     const text = req.body.text;
-
     if(!body) {
         res.status(400).json({ errorMessage: "Please add something to your post" })
     } else if(!text) {

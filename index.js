@@ -1,5 +1,5 @@
 // / code away!
-// GOTCHA require* was needed
+
 // Imports
 // const express = require('express');
 const server = require('./server.js');
