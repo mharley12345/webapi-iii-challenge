@@ -1,10 +1,12 @@
 // GOTCHA require* was needed
 // Imports
 const express = require('express');
+const cors = require('cors')
 const userRouter = require('./users/userRouter');
 const postRouter = require('./posts/postRouter')
 // Create our server
 const server = express();
+server.use(cors())
 server.use(express.json());
 
 // use Methods

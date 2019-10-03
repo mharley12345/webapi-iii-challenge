@@ -9,7 +9,7 @@ router.get('/', (req, res) => {
         res.status(200).json(posts)
     })
     .catch(err =>{
-        res.status(500).json({errorMessage:"Error getting Posts"})
+        res.status(500).json({errorMessage:`${err}`})
     })
 });
 
