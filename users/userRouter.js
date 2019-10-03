@@ -1,41 +1,41 @@
 const express = require('express');
-
+const User = require('./userDb.js')
 const router = express.Router();
 
-const User = require('./userDb')
 
 
 
 
 
 router.post('/', (req, res) => {
-    User.insert(req.body)
-
-    .then(user =>{
-        res.status(201).json(user)
+     const body = req.body
+     console.log("this is my body")
+    User.insert(body)
+    
+    .then(users =>{
+        res.status(201).json({newUser: users})
     })
     
     .catch(error =>{
         console.log(error)
-    res.status(500).json({message:"Error Adding User"}
-    )
+    res.status(500).json({message:"Error Adding User"})
     })
 })
 
 
-router.post('/:id/posts', (req, res) => {
-    User.insert(req.body)
-    .then(posts =>{
-       res.status(201).json(posts)
+router.post('/:id/posts', validateUserId, validatePost, (req, res) => {
+    //  const userId = req.params.id;
+    const body = req.body;
+    body.user_id = req.params.id;
+    // console.log(body)
+    User.insert(body)
+    .then(user => {
+        res.status(201).json(user)    
     })
-    .catch(error =>{
-       console.log(error,'Posting ');
-       res.status(500).json({
-           message:'Error posting '
+    .catch(err => {
+        res.status(500).json({ message: 'Error adding the user' })
     })
-})
 });
-
 router.get('/', (req, res) => {
      User.get(req.query)
      .then(user =>{
@@ -86,27 +86,53 @@ router.put('/:id', (req, res) => {
     
 });
 
+
+
+
 // custom middleware
 
 function validateUserId(req, res, next) {
-  const id = req.id 
-if ( id === req.param.id){
-    
-  console.log('yes')
-}else{
-    router.status(400)
-    console.log('No')
-}
-  console.log(req.params.id)
-next()
-}
+    // store req.params.id
+    const id = req.params.id;
+
+    User.getById(id)
+    .then(user => {
+        if(!user) {
+            res.status(404).json({ errorMessage: "That is not a valid id/user" })
+        }
+        // create new key/val pair inside our user
+        req.user = user;
+        // if that doesn;t work > go to next Middle Ware
+        next();
+    })
+    .catch( err => {
+        res.status(400).json({ errorMessage: 'invalid user id'})
+    })
+};
 
 function validateUser(req, res, next) {
-
+    const body = req.body
+    if (!body){
+        res.status(400).json({message: 'Missing user data'})
+    }else if (!body.name){
+        res.status(400).json({message:'User name required'})
+    }else{
+        next()
+    }
 };
 
 function validatePost(req, res, next) {
+    // Need - req.body & body.text
+    const body = req.body;
+    const text = req.body.text;
 
+    if(!body) {
+        res.status(400).json({ errorMessage: "Please add something to your post" })
+    } else if(!text) {
+        res.status(400).json({ errorMessage: "Please add text" })
+    } else {
+        // move to next middleware
+        next();
+    }
 };
-
 module.exports = router;
