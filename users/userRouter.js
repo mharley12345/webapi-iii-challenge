@@ -4,6 +4,8 @@ const UsersDB = require('./userDb.js');
 const PostsDB = require('../posts/postDb.js');
 // Ensure our router is using Express
 const router = express.Router();
+
+
 router.post('/', validateUser, (req, res) => {
     const body = req.body;
     console.log('This is the body', body)
